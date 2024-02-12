@@ -7,7 +7,7 @@ def getPostId(postUrl):
     post_id = None
 
     if not postUrl:
-        raise BadRequest("Instagram URL was not provided")
+        raise Exception("Instagram URL was not provided")
 
     post_check = post_regex.match(postUrl)
     if post_check:
@@ -18,7 +18,7 @@ def getPostId(postUrl):
         post_id = reel_check.group(1)
 
     if not post_id:
-        raise BadRequest("Instagram post/reel ID was not found")
+        raise Exception("Instagram post/reel ID was not found")
 
     return post_id
 
@@ -34,4 +34,4 @@ async def fetchPostJson(postUrl, timeout=None):
     if api_json:
         return api_json
 
-    raise BadRequest("Video link for this post is not public.", 401)
+    raise Exception("Video link for this post is not public.", 401)

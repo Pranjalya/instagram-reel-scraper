@@ -1,7 +1,32 @@
+import os
+import re
 import json
 import requests
 from uuid import uuid4
+import functions_framework
 from urllib.parse import urlencode
+
+
+def getPostId(postUrl):
+    post_regex = re.compile(r'^https://(?:www\.)?instagram\.com\/p\/([a-zA-Z0-9_-]+)\/?')
+    reel_regex = re.compile(r'^https:\/\/(?:www\.)?instagram\.com\/reels?\/([a-zA-Z0-9_-]+)\/?')
+    post_id = None
+
+    if not postUrl:
+        raise Exception("Instagram URL was not provided")
+
+    post_check = post_regex.match(postUrl)
+    if post_check:
+        post_id = post_check.group(1)
+
+    reel_check = reel_regex.match(postUrl)
+    if reel_check:
+        post_id = reel_check.group(1)
+
+    if not post_id:
+        raise Exception("Instagram post/reel ID was not found")
+
+    return post_id
 
 
 def format_graphql_json(post_json):
@@ -70,7 +95,7 @@ def encode_post_request_data(shortcode):
     return encoded
 
 
-def fetch_from_graphql(post_id, timeout=0):
+def fetch_from_graphql(post_id, timeout=None):
     if not post_id:
         return None
 
@@ -98,7 +123,7 @@ def fetch_from_graphql(post_id, timeout=0):
         if response.json().get('statusText') == "error":
             return None
     except Exception as e:
-        handle_scraper_error(e)
+        print(e)
         return None
 
     if response.json().get('statusText') == "error":
@@ -115,3 +140,20 @@ def fetch_from_graphql(post_id, timeout=0):
 
     formatted_json = format_graphql_json(response_json)
     return formatted_json
+
+
+@functions_framework.http
+def fetch_reel(request):
+    request_json = request.get_json(silent=True)
+
+    if not request_json:
+        raise Exception("Request not found")
+
+    post_url = request_json.get("url")
+    post_id = getPostId(post_url)
+
+    post_data = fetch_from_graphql(post_id)
+    if post_data is None:
+        return "Error, unable to fetch post", 403
+
+    return post_data, 200
